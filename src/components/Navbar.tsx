@@ -16,6 +16,9 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <Link href="/timezone" className="btn-secondary text-sm hidden sm:inline-flex">
+            🌍 Time Converter
+          </Link>
           <Link href="/entry/new" className="btn-primary text-sm hidden sm:inline-flex">
             + New Entry
           </Link>

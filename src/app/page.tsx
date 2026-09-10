@@ -10,6 +10,9 @@ export default function LandingPage() {
           <span className="text-xl font-bold text-amber-800">DayDiary</span>
         </div>
         <div className="flex gap-3">
+          <Link href="/timezone" className="btn-secondary text-sm hidden sm:inline-flex">
+            🌍 Time Converter
+          </Link>
           <Link href="/login" className="btn-secondary text-sm">
             Sign In
           </Link>
