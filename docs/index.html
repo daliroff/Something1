@@ -45,7 +45,6 @@
   header.hero p { color: var(--stone-600); max-width: 640px; margin: 0 auto; line-height: 1.5; }
   main { padding-bottom: 64px; }
   section { margin-bottom: 40px; }
-  h2.section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; }
 
   .grid {
     display: grid;
@@ -91,12 +90,28 @@
   }
   .btn-secondary:hover { background: var(--amber-50); }
 
+  /* Bold, time.gov-inspired per-zone header bars, fused with the map below */
+  .zone-headers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (min-width: 640px) { .zone-headers { grid-template-columns: repeat(4, 1fr); } }
+  .zone-header {
+    text-align: left; border-radius: 12px; border: 2px solid transparent; padding: 12px;
+    cursor: pointer; font: inherit; -webkit-appearance: none;
+  }
+  .zone-header .row-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+  .zone-header .zname { font-size: .6875rem; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+  .zone-header .live { display: flex; align-items: center; gap: 4px; font-size: .5625rem; font-weight: 700; white-space: nowrap; }
+  .zone-header .live .dot { width: 6px; height: 6px; border-radius: 999px; animation: pulse-dot 1.4s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  .zone-header .meta { font-size: .625rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--stone-500); margin-bottom: 4px; }
+  .zone-header .time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15rem; font-weight: 700; color: #1c1917; font-variant-numeric: tabular-nums; }
+  .zone-header .bar { height: 4px; border-radius: 999px; margin-top: 8px; }
+
   .map-svg { width: 100%; height: auto; }
   .map-svg path { stroke: #fff; stroke-width: 1; cursor: pointer; transition: filter .15s; }
   .map-svg path:hover { filter: brightness(0.95); }
   .map-svg text { font-size: 22px; font-weight: 700; fill: #1c1917; stroke: #fff; stroke-width: 4px; paint-order: stroke; cursor: pointer; }
   .map-svg circle { fill: #1c1917; stroke: #fff; stroke-width: 2px; cursor: pointer; }
-  .map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: .75rem; color: #57534e; }
+  .map-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px; font-size: .75rem; color: #57534e; }
   .map-legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
   .map-legend .swatch span.dot { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
 
@@ -132,15 +147,16 @@
 
 <main class="wrap">
   <section>
-    <h2 class="section-title">Live Time Tracker</h2>
-    <div class="grid" id="clock-grid"></div>
+    <div class="grid" id="ref-clock-grid"></div>
   </section>
 
   <section>
     <div class="card">
-      <h2>US Time Zone Map</h2>
-      <p class="desc">Click a region (or a city) to set it as the converter's source zone. Boundaries are simplified
-        to the state level for clarity.</p>
+      <h2>Live US Time Zones</h2>
+      <p class="desc">Click a zone header, a region on the map, or a city to set it as the converter's source zone.</p>
+
+      <div class="zone-headers" id="zone-headers"></div>
+
       <svg id="us-map" class="map-svg" viewBox="177 96 934 593" role="img" aria-label="Map of US time zones"></svg>
       <div class="map-legend" id="map-legend"></div>
     </div>
@@ -178,13 +194,22 @@
 (function () {
   "use strict";
 
-  var ZONES = [
-    { id: "America/Los_Angeles", label: "Pacific Time", city: "Los Angeles", flag: "🇺🇸" },
-    { id: "America/Denver", label: "Mountain Time", city: "Denver", flag: "🇺🇸" },
-    { id: "America/Chicago", label: "Central Time", city: "Chicago", flag: "🇺🇸" },
-    { id: "America/New_York", label: "Eastern Time", city: "New York", flag: "🇺🇸" },
-    { id: "Asia/Tashkent", label: "Uzbekistan Time", city: "Tashkent", flag: "🇺🇿" }
+  var US_ZONES = [
+    { key: "pacific", id: "America/Los_Angeles", label: "Pacific Time", city: "Los Angeles" },
+    { key: "mountain", id: "America/Denver", label: "Mountain Time", city: "Denver" },
+    { key: "central", id: "America/Chicago", label: "Central Time", city: "Chicago" },
+    { key: "eastern", id: "America/New_York", label: "Eastern Time", city: "New York" }
   ];
+  var ALL_ZONES = US_ZONES.concat([{ key: "uzbekistan", id: "Asia/Tashkent", label: "Uzbekistan Time", city: "Tashkent", flag: "🇺🇿" }]);
+  ALL_ZONES.forEach(function (z) { z.flag = z.flag || "🇺🇸"; });
+
+  // Bold, time.gov-inspired palette — orange / green / gold / red
+  var ZONE_COLORS = {
+    pacific: { fill: "#f97316", fillSelected: "#c2410c", text: "#c2410c", badgeBg: "#ffedd5" },
+    mountain: { fill: "#22c55e", fillSelected: "#15803d", text: "#15803d", badgeBg: "#dcfce7" },
+    central: { fill: "#f59e0b", fillSelected: "#b45309", text: "#b45309", badgeBg: "#fef3c7" },
+    eastern: { fill: "#ef4444", fillSelected: "#b91c1c", text: "#b91c1c", badgeBg: "#fee2e2" }
+  };
 
   function getTimeZoneOffsetMinutes(timeZone, date) {
     var dtf = new Intl.DateTimeFormat("en-US", {
@@ -254,49 +279,39 @@
     return p.year + "-" + pad(p.month) + "-" + pad(p.day) + "T" + pad(p.hour) + ":" + pad(p.minute);
   }
 
-  // ---- Live clock grid ----
+  // ---- Reference clocks: Uzbekistan + your local time ----
   var localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   var isLocalUzbekistan = localTimeZone === "Asia/Tashkent";
-  var gridEl = document.getElementById("clock-grid");
+  var refGridEl = document.getElementById("ref-clock-grid");
 
-  function renderClockGrid() {
+  function renderReferenceClocks() {
     var now = new Date();
     var html = "";
 
-    ZONES.forEach(function (zone) {
-      var isUz = zone.id === "Asia/Tashkent";
-      var c = formatClock(now, zone.id);
-      var abbr = getZoneAbbreviation(zone.id, now);
-      var offset = formatOffset(getTimeZoneOffsetMinutes(zone.id, now));
-      html += '<div class="clock-card' + (isUz ? " uz" : "") + '">' +
-        '<div class="row-top"><div><div class="label">' + zone.flag + " " + zone.label + '</div>' +
-        '<div class="city">' + zone.city + '</div></div>' +
-        '<span class="abbr">' + abbr + '</span></div>' +
-        '<div class="time">' + c.time + '</div>' +
-        '<div class="meta"><span>' + c.date + '</span><span>' + offset + '</span></div>' +
-        '</div>';
-    });
+    var c = formatClock(now, "Asia/Tashkent");
+    html += '<div class="clock-card uz">' +
+      '<div class="row-top"><div><div class="label">🇺🇿 Uzbekistan Time</div>' +
+      '<div class="city">Tashkent</div></div>' +
+      '<span class="abbr">' + getZoneAbbreviation("Asia/Tashkent", now) + '</span></div>' +
+      '<div class="time">' + c.time + '</div>' +
+      '<div class="meta"><span>' + c.date + '</span><span>' + formatOffset(getTimeZoneOffsetMinutes("Asia/Tashkent", now)) + '</span></div>' +
+      '</div>';
 
     if (!isLocalUzbekistan) {
       var c2 = formatClock(now, localTimeZone);
-      var abbr2 = getZoneAbbreviation(localTimeZone, now);
-      var offset2 = formatOffset(getTimeZoneOffsetMinutes(localTimeZone, now));
       html += '<div class="clock-card local">' +
         '<div class="row-top"><div><div class="label">📍 Your Local Time</div>' +
         '<div class="city">' + localTimeZone.replace("_", " ") + '</div></div>' +
-        '<span class="abbr">' + abbr2 + '</span></div>' +
+        '<span class="abbr">' + getZoneAbbreviation(localTimeZone, now) + '</span></div>' +
         '<div class="time">' + c2.time + '</div>' +
-        '<div class="meta"><span>' + c2.date + '</span><span>' + offset2 + '</span></div>' +
+        '<div class="meta"><span>' + c2.date + '</span><span>' + formatOffset(getTimeZoneOffsetMinutes(localTimeZone, now)) + '</span></div>' +
         '</div>';
     }
 
-    gridEl.innerHTML = html;
+    refGridEl.innerHTML = html;
   }
 
-  renderClockGrid();
-  setInterval(renderClockGrid, 1000);
-
-  var US_MAP_VIEWBOX = "177 96 934 593";
+var US_MAP_VIEWBOX = "177 96 934 593";
   var STATE_SHAPES = [
     { id: "WA", name: "Washington", zone: "pacific", d: "M267.6,106.4l4.4,1.5l9.7,2.7l8.6,1.9l20,5.7l23,5.7l15.2,3.4l-1,3.9l-4.1,13.8l-4.5,20.8 l-3.2,16.1l-0.4,9.4l-13.2-3.9l-15.6-3.4l-13.7,0.6l-1.6-1.5l-5.3,1.9l-4-0.3l-2.7-1.8l-1.6,0.5l-4.2-0.2l-1.9-1.4l-4.8-1.7 l-1.4-0.2l-5-1.3l-1.8,1.5l-5.7-0.3l-4.8-3.8l0.2-0.8l0.1-7.9l-2.1-3.9l-4.1-0.7l-0.4-2.4l-2.5-0.6l-2.9-0.5l-1.8,1l-2.3-2.9 l0.3-2.9l2.7-0.3l1.6-4l-2.6-1.1l0.2-3.7l4.4-0.6l-2.7-2.7l-1.5-7.1l0.6-2.9v-7.9l-1.8-3.2l2.3-9.4l2.1,0.5l2.4,2.9l2.7,2.6 l3.2,1.9l4.5,2.1l3.1,0.6l2.9,1.5l3.4,1l2.3-0.2v-2.4l1.3-1.1l2.1-1.3l0.3,1.1l0.3,1.8l-2.3,0.5l-0.3,2.1l1.8,1.5l1.1,2.4l0.6,1.9 l1.5-0.2l0.2-1.3l-1-1.3l-0.5-3.2l0.8-1.8l-0.6-1.5V119l1.8-3.6l-1.1-2.6l-2.4-4.8l0.3-0.8L267.6,106.4z M258.1,112.3l2-0.2 l0.5,1.4l1.5-1.6h2.3l0.8,1.5l-1.5,1.7l0.6,0.8l-0.7,2l-1.4,0.4c0,0-0.9,0.1-0.9-0.2s1.5-2.6,1.5-2.6l-1.7-0.6l-0.3,1.5l-0.7,0.6 l-1.5-2.3L258.1,112.3z" },
     { id: "OR", name: "Oregon", zone: "pacific", d: "M314.3,276.7l4.3-17.9l4.7-17.9l1.1-4.2l2.4-5.6l-0.6-1.2l-2.5,0l-1.3-1.7l0.5-1.5l0.5-3.2l4.5-5.5 l1.8-1.1l1.1-1.1l1.5-3.6l4-5.7l3.6-3.9l0.2-3.5l-3.3-2.5l-1.2-4.5l-13.2-3.7l-15.1-3.5l-15.4,0.1l-0.5-1.4l-5.5,2.1l-4.5-0.6 l-2.4-1.6l-1.3,0.7L273,184l-1.7-1.4l-5.3-2.1l-0.8,0.1l-4.3-1.5l-1.9,1.8l-6.2-0.3l-5.9-4.1l0.7-0.8l0.2-7.8l-2.3-3.9l-4.1-0.6 l-0.7-2.5l-2.4-0.5l-5.8,2.1l-2.3,6.5l-3.2,10l-3.2,6.5l-5,14.1l-6.5,13.6l-8.1,12.6l-1.9,2.9l-0.8,8.6l-1.3,6l2.7,3.5l6.7,2.3 l11.6,3.3l7.9,2.5l12.4,3.6l13.3,3.6l13.2,3.6" },
@@ -348,20 +363,9 @@
     { id: "ME", name: "Maine", zone: "eastern", d: "M1097.2,177.3l1.9,2.1l2.3,3.7v1.9l-2.1,4.7l-1.9,0.6l-3.4,3.1l-4.8,5.5c0,0-0.6,0-1.3,0 c-0.6,0-1-2.1-1-2.1l-1.8,0.2l-1,1.5l-2.4,1.5l-1,1.5l1.6,1.5l-0.5,0.6l-0.5,2.7l-1.9-0.2v-1.6l-0.3-1.3l-1.5,0.3l-1.8-3.2 l-2.1,1.3l1.3,1.5l0.3,1.1l-0.8,1.3l0.3,3.1l0.2,1.6l-1.6,2.6l-2.9,0.5l-0.3,2.9l-5.3,3.1l-1.3,0.5l-1.6-1.5l-3.1,3.6l1,3.2 l-1.5,1.3l-0.2,4.4l-1.1,6.3l-2.5-1.2l-0.5-3.1l-3.9-1.1l-0.3-2.7l-7.3-23.4l-4.2-13.6l1.4-0.1l1.5,0.4v-2.6l0.8-5.5l2.6-4.7l1.5-4 l-1.9-2.4v-6l0.8-1l0.8-2.7l-0.2-1.5l-0.2-4.8l1.8-4.8l2.9-8.9l2.1-4.2h1.3l1.3,0.2v1.1l1.3,2.3l2.7,0.6l0.8-0.8v-1l4-2.9l1.8-1.8 l1.5,0.2l6,2.4l1.9,1l9.1,29.9h6l0.8,1.9l0.2,4.8l2.9,2.3h0.8l0.2-0.5l-0.5-1.1L1097.2,177.3z M1076.3,207.5l1.5-1.5l1.4,1.1 l0.6,2.4l-1.7,0.9L1076.3,207.5z M1083,201.6l1.8,1.9c0,0,1.3,0.1,1.3-0.2s0.2-2,0.2-2l0.9-0.8l-0.8-1.8l-2,0.7L1083,201.6z" },
   ];
 
+  var ZONE_TO_IANA = { pacific: "America/Los_Angeles", mountain: "America/Denver", central: "America/Chicago", eastern: "America/New_York" };
+  var ARIZONA = STATE_SHAPES.filter(function (s) { return s.id === "AZ"; })[0];
 
-  // ---- US time zone map ----
-  var ZONE_TO_IANA = {
-    pacific: "America/Los_Angeles",
-    mountain: "America/Denver",
-    central: "America/Chicago",
-    eastern: "America/New_York"
-  };
-  var ZONE_COLORS = {
-    pacific: { fill: "#7dd3fc", fillSelected: "#38bdf8" },
-    mountain: { fill: "#fda4af", fillSelected: "#fb7185" },
-    central: { fill: "#fcd34d", fillSelected: "#f59e0b" },
-    eastern: { fill: "#86efac", fillSelected: "#4ade80" }
-  };
   var CITY_MARKERS = [
     { zone: "pacific", label: "Los Angeles", x: 210, y: 481, dx: 10, dy: -8 },
     { zone: "mountain", label: "Denver", x: 480, y: 416, dx: 10, dy: -8 },
@@ -371,10 +375,49 @@
 
   var mapSvg = document.getElementById("us-map");
   var mapLegend = document.getElementById("map-legend");
+  var zoneHeadersEl = document.getElementById("zone-headers");
+
+  function renderZoneHeaders() {
+    var now = new Date();
+    var selected = fromZoneSelect.value;
+    var html = "";
+    US_ZONES.forEach(function (zone) {
+      var colors = ZONE_COLORS[zone.key];
+      var isSelected = zone.id === selected;
+      var abbr = getZoneAbbreviation(zone.id, now);
+      var offset = formatOffset(getTimeZoneOffsetMinutes(zone.id, now));
+      var time = formatClock(now, zone.id).time;
+      html += '<button type="button" class="zone-header" data-zone="' + zone.key + '" style="background:' + colors.badgeBg +
+        ';border-color:' + (isSelected ? colors.fillSelected : 'transparent') + '">' +
+        '<div class="row-top">' +
+        '<span class="zname" style="color:' + colors.text + '">' + zone.label + '</span>' +
+        '<span class="live" style="color:' + colors.text + '"><span class="dot" style="background:' + colors.text + '"></span>LIVE</span>' +
+        '</div>' +
+        '<div class="meta">' + abbr + ' (' + offset + ')</div>' +
+        '<div class="time">' + time + '</div>' +
+        '<div class="bar" style="background:' + colors.fillSelected + '"></div>' +
+        '</button>';
+    });
+    zoneHeadersEl.innerHTML = html;
+    zoneHeadersEl.querySelectorAll('[data-zone]').forEach(function (el) {
+      el.addEventListener('click', function () { selectZone(this.getAttribute('data-zone')); });
+    });
+  }
+
+  function selectZone(zoneKey) {
+    fromZoneSelect.value = ZONE_TO_IANA[zoneKey];
+    renderConverter();
+    renderMap();
+    renderZoneHeaders();
+  }
 
   function renderMap() {
     var selected = fromZoneSelect.value;
     var svgParts = [];
+    svgParts.push(
+      '<defs><pattern id="az-dst-hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">' +
+      '<line x1="0" y1="0" x2="0" y2="6" stroke="#ffffff" stroke-width="2.5" opacity="0.65"/></pattern></defs>'
+    );
     for (var i = 0; i < STATE_SHAPES.length; i++) {
       var s = STATE_SHAPES[i];
       var iana = ZONE_TO_IANA[s.zone];
@@ -386,6 +429,7 @@
         s.zone.charAt(0).toUpperCase() + s.zone.slice(1) + ' Time</title></path>'
       );
     }
+    svgParts.push('<path d="' + ARIZONA.d + '" fill="url(#az-dst-hatch)" pointer-events="none"><title>Arizona — Mountain Standard Time year-round (no Daylight Saving)</title></path>');
     for (var j = 0; j < CITY_MARKERS.length; j++) {
       var c = CITY_MARKERS[j];
       var r = ZONE_TO_IANA[c.zone] === selected ? 9 : 7;
@@ -399,12 +443,7 @@
     mapSvg.innerHTML = svgParts.join('');
 
     mapSvg.querySelectorAll('[data-zone]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        var zone = this.getAttribute('data-zone');
-        fromZoneSelect.value = ZONE_TO_IANA[zone];
-        renderConverter();
-        renderMap();
-      });
+      el.addEventListener('click', function () { selectZone(this.getAttribute('data-zone')); });
     });
 
     if (!mapLegend.dataset.built) {
@@ -413,6 +452,8 @@
         legendHtml += '<span class="swatch"><span class="dot" style="background:' + ZONE_COLORS[zone].fill +
           '"></span>' + zone.charAt(0).toUpperCase() + zone.slice(1) + ' Time</span>';
       });
+      legendHtml += '<span class="swatch"><span class="dot" style="background:' + ZONE_COLORS.mountain.fill +
+        ';background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.75) 0 1.5px, transparent 1.5px 4px)"></span>Arizona (no DST)</span>';
       mapLegend.innerHTML = legendHtml;
       mapLegend.dataset.built = '1';
     }
@@ -425,7 +466,7 @@
   var diffLine = document.getElementById("diff-line");
   var resultGrid = document.getElementById("result-grid");
 
-  ZONES.forEach(function (zone) {
+  ALL_ZONES.forEach(function (zone) {
     var opt = document.createElement("option");
     opt.value = zone.id;
     opt.textContent = zone.flag + " " + zone.label + " (" + zone.city + ")";
@@ -443,7 +484,7 @@
     var y = Number(match[1]), mo = Number(match[2]), d = Number(match[3]), h = Number(match[4]), mi = Number(match[5]);
     var instant = zonedWallTimeToUtc(y, mo, d, h, mi, fromZone);
 
-    var fromZoneDef = ZONES.filter(function (z) { return z.id === fromZone; })[0];
+    var fromZoneDef = ALL_ZONES.filter(function (z) { return z.id === fromZone; })[0];
     var uzOffset = getTimeZoneOffsetMinutes("Asia/Tashkent", instant);
     var fromOffset = getTimeZoneOffsetMinutes(fromZone, instant);
     var diffHours = (uzOffset - fromOffset) / 60;
@@ -457,7 +498,7 @@
     }
 
     var html = "";
-    ZONES.forEach(function (zone) {
+    ALL_ZONES.forEach(function (zone) {
       var isSource = zone.id === fromZone;
       var isUz = zone.id === "Asia/Tashkent";
       var time = new Intl.DateTimeFormat("en-US", {
@@ -479,15 +520,18 @@
     resultGrid.innerHTML = html;
   }
 
-  fromZoneSelect.addEventListener("change", renderConverter);
+  fromZoneSelect.addEventListener("change", function () { renderConverter(); renderMap(); renderZoneHeaders(); });
   dtInput.addEventListener("input", renderConverter);
   nowBtn.addEventListener("click", function () {
     dtInput.value = toDatetimeLocalValue(zonedParts(new Date(), fromZoneSelect.value));
     renderConverter();
   });
 
-  renderConverter();
+  renderReferenceClocks();
+  renderZoneHeaders();
   renderMap();
+  renderConverter();
+  setInterval(function () { renderReferenceClocks(); renderZoneHeaders(); }, 1000);
 
   document.getElementById("year").textContent = new Date().getFullYear();
 })();

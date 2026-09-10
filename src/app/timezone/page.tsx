@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import LiveClockGrid from '@/components/timezone/LiveClockGrid'
 import TimeZoneWorkspace from '@/components/timezone/TimeZoneWorkspace'
 
 export const metadata: Metadata = {
@@ -31,15 +30,8 @@ export default function TimeZonePage() {
         </p>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 pb-16 space-y-10">
-        <section>
-          <h2 className="text-lg font-bold text-stone-800 mb-4">Live Time Tracker</h2>
-          <LiveClockGrid />
-        </section>
-
-        <section>
-          <TimeZoneWorkspace />
-        </section>
+      <main className="max-w-5xl mx-auto px-6 pb-16">
+        <TimeZoneWorkspace />
       </main>
 
       <footer className="text-center py-8 text-stone-400 text-sm">
