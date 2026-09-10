@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import LiveClockGrid from '@/components/timezone/LiveClockGrid'
-import TimeZoneConverter from '@/components/timezone/TimeZoneConverter'
+import TimeZoneWorkspace from '@/components/timezone/TimeZoneWorkspace'
 
 export const metadata: Metadata = {
   title: 'US ⇄ Uzbekistan Time Converter | DayDiary',
@@ -38,7 +38,7 @@ export default function TimeZonePage() {
         </section>
 
         <section>
-          <TimeZoneConverter />
+          <TimeZoneWorkspace />
         </section>
       </main>
 

@@ -5,14 +5,15 @@ import { ZONES, formatClock, formatOffset, getTimeZoneOffsetMinutes, getZoneAbbr
 
 export default function LiveClockGrid() {
   const [now, setNow] = useState<Date | null>(null)
+  const [localTimeZone, setLocalTimeZone] = useState<string | null>(null)
 
   useEffect(() => {
     setNow(new Date())
+    setLocalTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
 
-  const localTimeZone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
   const isLocalUzbekistan = localTimeZone === 'Asia/Tashkent'
 
   return (
@@ -56,8 +57,9 @@ export default function LiveClockGrid() {
         )
       })}
 
-      {/* Your local time, like time.gov's "Your time" reference */}
-      {!isLocalUzbekistan && (
+      {/* Your local time, like time.gov's "Your time" reference. Only known client-side, so it
+          renders nothing during SSR/initial hydration rather than guessing and mismatching. */}
+      {localTimeZone && now && !isLocalUzbekistan && (
         <div className="rounded-2xl p-5 shadow-sm border border-amber-300 bg-amber-50">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -65,15 +67,15 @@ export default function LiveClockGrid() {
               <div className="text-xs text-amber-600">{localTimeZone.replace('_', ' ')}</div>
             </div>
             <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-amber-200 text-amber-800">
-              {now ? getZoneAbbreviation(localTimeZone, now) : ''}
+              {getZoneAbbreviation(localTimeZone, now)}
             </span>
           </div>
           <div className="font-mono text-3xl sm:text-4xl font-bold tabular-nums tracking-tight text-amber-900">
-            {now ? formatClock(now, localTimeZone).time : '--:--:--'}
+            {formatClock(now, localTimeZone).time}
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-amber-700">
-            <span>{now ? formatClock(now, localTimeZone).date : ''}</span>
-            <span>{now ? formatOffset(getTimeZoneOffsetMinutes(localTimeZone, now)) : ''}</span>
+            <span>{formatClock(now, localTimeZone).date}</span>
+            <span>{formatOffset(getTimeZoneOffsetMinutes(localTimeZone, now))}</span>
           </div>
         </div>
       )}

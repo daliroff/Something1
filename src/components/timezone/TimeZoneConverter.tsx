@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ZONES,
   ZoneId,
@@ -16,9 +16,20 @@ function toDatetimeLocalValue(parts: { year: number; month: number; day: number;
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`
 }
 
-export default function TimeZoneConverter() {
-  const [fromZone, setFromZone] = useState<ZoneId>('America/Los_Angeles')
-  const [inputValue, setInputValue] = useState<string>(() => toDatetimeLocalValue(zonedParts(new Date(), 'America/Los_Angeles')))
+interface TimeZoneConverterProps {
+  fromZone: ZoneId
+  onFromZoneChange: (zone: ZoneId) => void
+}
+
+export default function TimeZoneConverter({ fromZone, onFromZoneChange }: TimeZoneConverterProps) {
+  // Starts empty so server and client render identically; filled in on mount to avoid
+  // a hydration mismatch from computing `new Date()` during render.
+  const [inputValue, setInputValue] = useState<string>('')
+
+  useEffect(() => {
+    setInputValue((current) => current || toDatetimeLocalValue(zonedParts(new Date(), fromZone)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setToNow = (zone: ZoneId) => {
     setInputValue(toDatetimeLocalValue(zonedParts(new Date(), zone)))
@@ -27,7 +38,7 @@ export default function TimeZoneConverter() {
   const handleZoneChange = (zone: ZoneId) => {
     // Re-interpret the currently displayed wall-clock numbers in the new zone,
     // rather than converting the instant, so the fields the user typed stay put.
-    setFromZone(zone)
+    onFromZoneChange(zone)
   }
 
   const instant = useMemo(() => {
