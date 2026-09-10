@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>US ⇄ Uzbekistan Time Converter</title>
+<meta name="description" content="Live time tracker and converter between U.S. time zones (Pacific, Mountain, Central, Eastern) and Uzbekistan time (Tashkent)." />
+<style>
+  :root {
+    color-scheme: light;
+    --bg-top: #fef9ef;
+    --bg-bottom: #fef3c7;
+    --ink: #1c1917;
+    --stone-600: #57534e;
+    --stone-500: #78716c;
+    --stone-400: #a8a29e;
+    --amber-50: #fffbeb;
+    --amber-200: #fde68a;
+    --amber-300: #fcd34d;
+    --amber-500: #f59e0b;
+    --amber-700: #b45309;
+    --amber-800: #92400e;
+    --sky-50: #f0f9ff;
+    --sky-200: #bae6fd;
+    --sky-700: #0369a1;
+    --sky-800: #075985;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+  nav.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; max-width: 960px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.25rem; color: var(--amber-800); text-decoration: none; }
+  header.hero { text-align: center; padding: 24px 24px 40px; }
+  header.hero .emoji { font-size: 3rem; margin-bottom: 12px; }
+  header.hero h1 { font-size: 2.25rem; font-weight: 700; margin: 0 0 12px; }
+  header.hero p { color: var(--stone-600); max-width: 640px; margin: 0 auto; line-height: 1.5; }
+  main { padding-bottom: 64px; }
+  section { margin-bottom: 40px; }
+  h2.section-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .clock-card {
+    border-radius: 16px; padding: 20px; color: #fff;
+    background: #1c1917; border: 1px solid #292524;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  .clock-card.uz { background: linear-gradient(135deg, #0369a1, #075985); border-color: #075985; }
+  .clock-card.local { background: var(--amber-50); border: 1px solid var(--amber-300); color: var(--amber-800); }
+  .clock-card .row-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .clock-card .label { font-size: .875rem; font-weight: 600; opacity: .95; }
+  .clock-card .city { font-size: .75rem; opacity: .7; }
+  .clock-card.local .city { color: var(--amber-700); opacity: 1; }
+  .clock-card .abbr { font-size: .6875rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.1); }
+  .clock-card.local .abbr { background: var(--amber-200); color: var(--amber-800); }
+  .clock-card .time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .clock-card .meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: .75rem; opacity: .75; }
+
+  .card {
+    background: #fff; border-radius: 12px; border: 1px solid var(--amber-200);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04); padding: 24px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; }
+  .card > p.desc { color: var(--stone-500); font-size: .875rem; margin: 0 0 24px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+  label { display: block; font-size: .875rem; font-weight: 500; margin-bottom: 4px; color: #44403c; }
+  select, input[type="datetime-local"] {
+    width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--amber-200);
+    background: #fff; font-size: .9375rem; font-family: inherit;
+  }
+  select:focus, input:focus { outline: none; box-shadow: 0 0 0 2px var(--amber-500); border-color: transparent; }
+  .dt-row { display: flex; gap: 8px; }
+  .btn-secondary {
+    background: #fff; color: var(--amber-700); font-weight: 600; padding: 8px 16px;
+    border-radius: 8px; border: 1px solid var(--amber-300); cursor: pointer; font-size: .875rem;
+    white-space: nowrap;
+  }
+  .btn-secondary:hover { background: var(--amber-50); }
+
+  .diff-line { margin: 16px 0; font-size: .875rem; color: var(--stone-500); }
+  .diff-line strong { color: var(--sky-700); }
+
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .result-card { border-radius: 10px; padding: 16px; border: 1px solid #e7e5e4; background: #fafaf9; }
+  .result-card.source { background: var(--amber-50); border-color: var(--amber-300); }
+  .result-card.uz { background: var(--sky-50); border-color: var(--sky-200); }
+  .result-card .row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .result-card .label { font-size: .75rem; font-weight: 600; color: #57534e; }
+  .result-card .badge { font-size: .625rem; font-weight: 700; color: var(--amber-700); background: var(--amber-200); padding: 2px 6px; border-radius: 4px; }
+  .result-card .time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.5rem; font-weight: 700; color: #292524; }
+  .result-card.uz .time { color: var(--sky-800); }
+  .result-card .sub { font-size: .75rem; color: var(--stone-500); margin-top: 4px; }
+
+  footer { text-align: center; padding: 32px 0; color: var(--stone-400); font-size: .875rem; }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <a class="brand" href="#"><span>📖</span> DayDiary</a>
+</nav>
+
+<header class="hero wrap">
+  <div class="emoji">🌍🕒</div>
+  <h1>US ⇄ Uzbekistan Time Converter</h1>
+  <p>A live world clock and converter for Pacific (PT), Mountain (MT), Central (CT) and Eastern (ET) time against
+     Uzbekistan Time (Tashkent) — daylight saving is handled automatically, just like time.gov.</p>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2 class="section-title">Live Time Tracker</h2>
+    <div class="grid" id="clock-grid"></div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Time Converter</h2>
+      <p class="desc">Pick a date &amp; time in any U.S. time zone and instantly see the equivalent time everywhere
+        else, including Tashkent, Uzbekistan.</p>
+
+      <div class="form-grid">
+        <div>
+          <label for="from-zone">From time zone</label>
+          <select id="from-zone"></select>
+        </div>
+        <div>
+          <label for="dt-input">Date &amp; time</label>
+          <div class="dt-row">
+            <input type="datetime-local" id="dt-input" />
+            <button type="button" class="btn-secondary" id="now-btn">Now</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="diff-line" id="diff-line"></div>
+      <div class="result-grid" id="result-grid"></div>
+    </div>
+  </section>
+</main>
+
+<footer>© <span id="year"></span> DayDiary — Times update automatically for daylight saving.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var ZONES = [
+    { id: "America/Los_Angeles", label: "Pacific Time", city: "Los Angeles", flag: "🇺🇸" },
+    { id: "America/Denver", label: "Mountain Time", city: "Denver", flag: "🇺🇸" },
+    { id: "America/Chicago", label: "Central Time", city: "Chicago", flag: "🇺🇸" },
+    { id: "America/New_York", label: "Eastern Time", city: "New York", flag: "🇺🇸" },
+    { id: "Asia/Tashkent", label: "Uzbekistan Time", city: "Tashkent", flag: "🇺🇿" }
+  ];
+
+  function getTimeZoneOffsetMinutes(timeZone, date) {
+    var dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    var parts = dtf.formatToParts(date);
+    var map = {};
+    for (var i = 0; i < parts.length; i++) map[parts[i].type] = parts[i].value;
+    var asUTC = Date.UTC(
+      Number(map.year), Number(map.month) - 1, Number(map.day),
+      Number(map.hour), Number(map.minute), Number(map.second)
+    );
+    return Math.round((asUTC - date.getTime()) / 60000);
+  }
+
+  function zonedWallTimeToUtc(year, month, day, hour, minute, timeZone) {
+    var guess = Date.UTC(year, month - 1, day, hour, minute);
+    var offset1 = getTimeZoneOffsetMinutes(timeZone, new Date(guess));
+    var utc = guess - offset1 * 60000;
+    var offset2 = getTimeZoneOffsetMinutes(timeZone, new Date(utc));
+    if (offset2 !== offset1) utc = guess - offset2 * 60000;
+    return new Date(utc);
+  }
+
+  function getZoneAbbreviation(timeZone, date) {
+    var dtf = new Intl.DateTimeFormat("en-US", { timeZone: timeZone, timeZoneName: "short" });
+    var part = dtf.formatToParts(date).filter(function (p) { return p.type === "timeZoneName"; })[0];
+    return part ? part.value : timeZone;
+  }
+
+  function formatOffset(minutes) {
+    var sign = minutes >= 0 ? "+" : "-";
+    var abs = Math.abs(minutes);
+    var h = Math.floor(abs / 60);
+    var m = abs % 60;
+    return "UTC" + sign + h + (m ? ":" + String(m).padStart(2, "0") : "");
+  }
+
+  function formatClock(date, timeZone) {
+    var time = new Intl.DateTimeFormat("en-US", {
+      timeZone: timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
+    }).format(date);
+    var dateStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: timeZone, weekday: "short", month: "short", day: "numeric", year: "numeric"
+    }).format(date);
+    return { time: time, date: dateStr };
+  }
+
+  function zonedParts(date, timeZone) {
+    var dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+    });
+    var parts = dtf.formatToParts(date);
+    var map = {};
+    for (var i = 0; i < parts.length; i++) map[parts[i].type] = parts[i].value;
+    return {
+      year: Number(map.year), month: Number(map.month), day: Number(map.day),
+      hour: Number(map.hour), minute: Number(map.minute)
+    };
+  }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function toDatetimeLocalValue(p) {
+    return p.year + "-" + pad(p.month) + "-" + pad(p.day) + "T" + pad(p.hour) + ":" + pad(p.minute);
+  }
+
+  // ---- Live clock grid ----
+  var localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var isLocalUzbekistan = localTimeZone === "Asia/Tashkent";
+  var gridEl = document.getElementById("clock-grid");
+
+  function renderClockGrid() {
+    var now = new Date();
+    var html = "";
+
+    ZONES.forEach(function (zone) {
+      var isUz = zone.id === "Asia/Tashkent";
+      var c = formatClock(now, zone.id);
+      var abbr = getZoneAbbreviation(zone.id, now);
+      var offset = formatOffset(getTimeZoneOffsetMinutes(zone.id, now));
+      html += '<div class="clock-card' + (isUz ? " uz" : "") + '">' +
+        '<div class="row-top"><div><div class="label">' + zone.flag + " " + zone.label + '</div>' +
+        '<div class="city">' + zone.city + '</div></div>' +
+        '<span class="abbr">' + abbr + '</span></div>' +
+        '<div class="time">' + c.time + '</div>' +
+        '<div class="meta"><span>' + c.date + '</span><span>' + offset + '</span></div>' +
+        '</div>';
+    });
+
+    if (!isLocalUzbekistan) {
+      var c2 = formatClock(now, localTimeZone);
+      var abbr2 = getZoneAbbreviation(localTimeZone, now);
+      var offset2 = formatOffset(getTimeZoneOffsetMinutes(localTimeZone, now));
+      html += '<div class="clock-card local">' +
+        '<div class="row-top"><div><div class="label">📍 Your Local Time</div>' +
+        '<div class="city">' + localTimeZone.replace("_", " ") + '</div></div>' +
+        '<span class="abbr">' + abbr2 + '</span></div>' +
+        '<div class="time">' + c2.time + '</div>' +
+        '<div class="meta"><span>' + c2.date + '</span><span>' + offset2 + '</span></div>' +
+        '</div>';
+    }
+
+    gridEl.innerHTML = html;
+  }
+
+  renderClockGrid();
+  setInterval(renderClockGrid, 1000);
+
+  // ---- Converter ----
+  var fromZoneSelect = document.getElementById("from-zone");
+  var dtInput = document.getElementById("dt-input");
+  var nowBtn = document.getElementById("now-btn");
+  var diffLine = document.getElementById("diff-line");
+  var resultGrid = document.getElementById("result-grid");
+
+  ZONES.forEach(function (zone) {
+    var opt = document.createElement("option");
+    opt.value = zone.id;
+    opt.textContent = zone.flag + " " + zone.label + " (" + zone.city + ")";
+    if (zone.id === "America/Los_Angeles") opt.selected = true;
+    fromZoneSelect.appendChild(opt);
+  });
+
+  dtInput.value = toDatetimeLocalValue(zonedParts(new Date(), fromZoneSelect.value));
+
+  function renderConverter() {
+    var match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(dtInput.value);
+    if (!match) { resultGrid.innerHTML = ""; diffLine.textContent = ""; return; }
+
+    var fromZone = fromZoneSelect.value;
+    var y = Number(match[1]), mo = Number(match[2]), d = Number(match[3]), h = Number(match[4]), mi = Number(match[5]);
+    var instant = zonedWallTimeToUtc(y, mo, d, h, mi, fromZone);
+
+    var fromZoneDef = ZONES.filter(function (z) { return z.id === fromZone; })[0];
+    var uzOffset = getTimeZoneOffsetMinutes("Asia/Tashkent", instant);
+    var fromOffset = getTimeZoneOffsetMinutes(fromZone, instant);
+    var diffHours = (uzOffset - fromOffset) / 60;
+
+    if (diffHours === 0) {
+      diffLine.innerHTML = fromZoneDef.label + " is <strong>the same time as</strong> Uzbekistan right now for this date.";
+    } else {
+      var word = diffHours > 0 ? "behind" : "ahead of";
+      diffLine.innerHTML = fromZoneDef.label + " is <strong>" + Math.abs(diffHours) + " hour" +
+        (Math.abs(diffHours) === 1 ? "" : "s") + " " + word + "</strong> Uzbekistan right now for this date.";
+    }
+
+    var html = "";
+    ZONES.forEach(function (zone) {
+      var isSource = zone.id === fromZone;
+      var isUz = zone.id === "Asia/Tashkent";
+      var time = new Intl.DateTimeFormat("en-US", {
+        timeZone: zone.id, hour: "2-digit", minute: "2-digit", hour12: true
+      }).format(instant);
+      var dateStr = new Intl.DateTimeFormat("en-US", {
+        timeZone: zone.id, weekday: "short", month: "short", day: "numeric"
+      }).format(instant);
+      var abbr = getZoneAbbreviation(zone.id, instant);
+      var offset = formatOffset(getTimeZoneOffsetMinutes(zone.id, instant));
+
+      html += '<div class="result-card' + (isUz ? " uz" : "") + (isSource ? " source" : "") + '">' +
+        '<div class="row-top"><span class="label">' + zone.flag + " " + zone.label + '</span>' +
+        (isSource ? '<span class="badge">SOURCE</span>' : "") + '</div>' +
+        '<div class="time">' + time + '</div>' +
+        '<div class="sub">' + dateStr + " · " + abbr + " (" + offset + ")</div>" +
+        '</div>';
+    });
+    resultGrid.innerHTML = html;
+  }
+
+  fromZoneSelect.addEventListener("change", renderConverter);
+  dtInput.addEventListener("input", renderConverter);
+  nowBtn.addEventListener("click", function () {
+    dtInput.value = toDatetimeLocalValue(zonedParts(new Date(), fromZoneSelect.value));
+    renderConverter();
+  });
+
+  renderConverter();
+
+  document.getElementById("year").textContent = new Date().getFullYear();
+})();
+</script>
+
+</body>
+</html>
